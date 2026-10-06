@@ -75,7 +75,12 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Specialized function for transaction ledger aggregates
-CREATE OR REPLACE FUNCTION get_transaction_aggregates(p_type TEXT DEFAULT NULL, p_employee_id UUID DEFAULT NULL)
+CREATE OR REPLACE FUNCTION get_transaction_aggregates(
+    p_type TEXT DEFAULT NULL, 
+    p_employee_id UUID DEFAULT NULL,
+    p_start_date TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+    p_end_date TIMESTAMP WITH TIME ZONE DEFAULT NULL
+)
 RETURNS JSON AS $$
 DECLARE
     result JSON;
@@ -91,7 +96,9 @@ BEGIN
             'rejected_count', COUNT(*) FILTER (WHERE type = p_type AND status IN ('rejected', 'denied', 'failed'))
         ) INTO result
         FROM transactions
-        WHERE (p_employee_id IS NULL OR staff_id = p_employee_id);
+        WHERE (p_employee_id IS NULL OR staff_id = p_employee_id)
+          AND (p_start_date IS NULL OR created_at >= p_start_date)
+          AND (p_end_date IS NULL OR created_at <= p_end_date);
     ELSE
         SELECT json_build_object(
             'total_amount', COALESCE(SUM(amount), 0),
@@ -106,7 +113,9 @@ BEGIN
             OR type = p_type
           )
           AND (p_employee_id IS NULL OR staff_id = p_employee_id)
-          AND status NOT IN ('rejected', 'denied', 'failed');
+          AND status NOT IN ('rejected', 'denied', 'failed')
+          AND (p_start_date IS NULL OR created_at >= p_start_date)
+          AND (p_end_date IS NULL OR created_at <= p_end_date);
     END IF;
     
     RETURN result;

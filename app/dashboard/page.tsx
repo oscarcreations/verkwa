@@ -223,47 +223,61 @@ export default function DashboardPage() {
       </div>
 
       {/* Hero Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        {heroStats.map((stat, i) => (
-          <div key={i} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between min-h-[160px]">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600">
-                {stat.title === "Revenue" && <span className="text-sm font-bold text-slate-900 leading-none">₵</span>}
-                {stat.title === "Deposits" && <div className="w-2.5 h-2.5 bg-slate-400 rounded-full" />}
-                {stat.title === "Withdrawals" && <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>}
-                {stat.title === "Account" && <span className="text-sm font-bold">L</span>}
-              </div>
-            </div>
+      <div className="flex md:grid overflow-x-auto md:overflow-x-visible md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 snap-x snap-mandatory no-scrollbar pb-4 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
+        {heroStats.map((stat, i) => {
+          const isBlue = i % 2 === 0;
+          const bgClass = isBlue ? "bg-blue-600" : "bg-red-500";
+          const borderClass = isBlue ? "border-blue-500" : "border-red-400";
+          const titleColor = isBlue ? "text-blue-100" : "text-red-100";
+          const valColor = "text-white";
+          const iconBg = isBlue ? "bg-blue-500/50" : "bg-red-400/50";
+          const iconColor = "text-white";
+          const subTitleColor = isBlue ? "text-blue-200" : "text-red-200";
+          const subValColor = "text-white";
+          const divBorderClass = isBlue ? "border-blue-500" : "border-red-400";
+          const linkColor = "text-white";
 
-            <div className="space-y-1">
-              <p className="text-[10px] md:text-[11px] font-bold text-slate-600 tracking-widest uppercase">{stat.title}</p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-[28px] md:text-[32px] font-bold text-slate-900 tracking-tight">{stat.lifetime}</span>
-                <span className="text-[9px] md:text-[10px] font-semibold text-accent bg-slate-50 px-2 py-0.5 rounded-full">Lifetime</span>
-              </div>
-            </div>
-
-            <div className="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
-              <div className="flex gap-4">
-                <div className="space-y-0.5">
-                  <p className="text-[9px] font-bold text-slate-300 tracking-widest leading-none">Today</p>
-                  <p className="text-[13px] font-bold text-slate-600 tracking-tight">{stat.today}</p>
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-[9px] font-bold text-slate-300 tracking-widest leading-none">Monthly</p>
-                  <p className="text-[13px] font-bold text-slate-600 tracking-tight">{stat.month}</p>
+          return (
+            <div key={i} className={`min-w-[85vw] md:min-w-0 snap-center shrink-0 border ${borderClass} rounded-2xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between min-h-[160px] ${bgClass}`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBg} ${iconColor}`}>
+                  {stat.title === "Revenue" && <span className={`text-sm font-bold leading-none ${iconColor}`}>₵</span>}
+                  {stat.title === "Deposits" && <div className={`w-2.5 h-2.5 rounded-full bg-white`} />}
+                  {stat.title === "Withdrawals" && <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>}
+                  {stat.title === "Account" && <span className="text-sm font-bold">L</span>}
                 </div>
               </div>
-              <Link 
-                href={stat.link}
-                className="text-[10px] font-black text-accent uppercase tracking-tighter hover:underline flex items-center gap-1"
-              >
-                {stat.actionLabel}
-                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-              </Link>
+
+              <div className="space-y-1">
+                <p className={`text-[10px] md:text-[11px] font-bold tracking-widest uppercase ${titleColor}`}>{stat.title}</p>
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-[28px] md:text-[32px] font-bold tracking-tight ${valColor}`}>{stat.lifetime}</span>
+                  <span className={`text-[9px] md:text-[10px] font-semibold px-2 py-0.5 rounded-full ${isBlue ? 'bg-blue-500/50 text-white' : 'bg-red-400/50 text-white'}`}>Lifetime</span>
+                </div>
+              </div>
+
+              <div className={`mt-4 pt-4 border-t flex items-center justify-between ${divBorderClass}`}>
+                <div className="flex gap-4">
+                  <div className="space-y-0.5">
+                    <p className={`text-[9px] font-bold tracking-widest leading-none ${subTitleColor}`}>Today</p>
+                    <p className={`text-[13px] font-bold tracking-tight ${subValColor}`}>{stat.today}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className={`text-[9px] font-bold tracking-widest leading-none ${subTitleColor}`}>Monthly</p>
+                    <p className={`text-[13px] font-bold tracking-tight ${subValColor}`}>{stat.month}</p>
+                  </div>
+                </div>
+                <Link 
+                  href={stat.link}
+                  className={`text-[10px] font-black uppercase tracking-tighter hover:underline flex items-center gap-1 ${linkColor}`}
+                >
+                  {stat.actionLabel}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </Link>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Admin Pending Requests Queue */}

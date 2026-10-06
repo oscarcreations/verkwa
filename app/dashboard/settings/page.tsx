@@ -179,7 +179,7 @@ export default function SettingsPage() {
 
         {/* General Tab */}
         {activeTab === "General" && (
-          <form onSubmit={handleSave} className="p-10 max-w-4xl space-y-8">
+          <form onSubmit={handleSave} className="p-6 md:p-10 max-w-4xl space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2">
                 <label className="text-[11px] font-bold text-slate-500 tracking-widest ml-1">
@@ -363,7 +363,7 @@ export default function SettingsPage() {
 
         {/* Notifications Tab */}
         {activeTab === "Notifications" && (
-          <form onSubmit={handleSave} className="p-10 max-w-4xl space-y-6">
+          <form onSubmit={handleSave} className="p-6 md:p-10 max-w-4xl space-y-6">
             <div className="space-y-1 mb-8">
               <h3 className="text-[15px] font-bold text-slate-800">Notification Preferences</h3>
               <p className="text-[12px] text-slate-500">Choose which notifications you want to receive.</p>

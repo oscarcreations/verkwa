@@ -134,8 +134,8 @@ export default function ReportsPage() {
         </div>
 
         {/* Highlight Summary Banner */}
-        <div className="p-8 bg-slate-50/50">
-          <div className="flex items-center gap-5">
+        <div className="p-6 md:p-8 bg-slate-50/50">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 md:gap-5">
             <div className="flex items-end gap-1 h-10">
               <div className="w-2.5 h-6 bg-slate-200 rounded-full animate-pulse"></div>
               <div className="w-2.5 h-10 bg-slate-600 rounded-full animate-pulse " style={{ animationDelay: '0.1s' }}></div>

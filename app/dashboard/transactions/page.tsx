@@ -188,7 +188,10 @@ function TransactionsContent() {
         setTotalCount(count || 0);
 
         const { data: aggData } = await supabase.rpc("get_transaction_aggregates", {
-          p_type: dbType, p_employee_id: isRestricted ? employeeId : null,
+          p_type: dbType, 
+          p_employee_id: isRestricted ? employeeId : null,
+          p_start_date: dateRange?.from || null,
+          p_end_date: dateRange?.to || null,
         });
         if (aggData) {
           setTotals({

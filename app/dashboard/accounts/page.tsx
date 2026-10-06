@@ -298,11 +298,10 @@ export default function AccountsPage() {
           ))}
         </div>
 
-        {/* Actions Row */}
-        <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-50/50">
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50">
+          <div className="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-auto">
             {/* Search */}
-            <div className="relative flex-1 sm:flex-initial">
+            <div className="relative w-full md:w-auto md:flex-initial">
               <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -324,7 +323,7 @@ export default function AccountsPage() {
                 placeholder={activeTab === "Customers" ? "Search customers..." : "Search by name or account..."}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full sm:w-72 pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-full text-xs focus:outline-none focus:border-accent/30 transition-all placeholder:text-slate-300"
+                className="w-full md:w-72 pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-full text-xs focus:outline-none focus:border-accent/30 transition-all placeholder:text-slate-300"
               />
             </div>
 
@@ -332,7 +331,7 @@ export default function AccountsPage() {
             <div className="relative">
               <button
                 onClick={() => setShowDateDropdown(!showDateDropdown)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all shadow-sm w-full md:w-auto"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -398,7 +397,7 @@ export default function AccountsPage() {
             <div className="relative">
               <button
                 onClick={() => { setShowSortDropdown(!showSortDropdown); setShowDateDropdown(false); }}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all shadow-sm w-full md:w-auto"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/></svg>
                 {sortBy === "newest" ? "Newest" : sortBy === "oldest" ? "Oldest" : sortBy === "name_asc" ? "Name A–Z" : "Name Z–A"}
@@ -431,15 +430,15 @@ export default function AccountsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+          <div className="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest text-center md:text-left">
               ({totalCount}) records
             </span>
             {selectedIds.size > 0 && isAdmin && (
               <button
                 onClick={handleBulkDelete}
                 disabled={deleting}
-                className="px-5 py-2 bg-red-50 border border-red-200 text-red-600 rounded-full font-bold text-xs hover:bg-red-100 transition-all flex items-center gap-2"
+                className="px-5 py-2 w-full md:w-auto justify-center bg-red-50 border border-red-200 text-red-600 rounded-full font-bold text-xs hover:bg-red-100 transition-all flex items-center gap-2"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                 Delete ({selectedIds.size})
@@ -447,7 +446,7 @@ export default function AccountsPage() {
             )}
             <Link
               href="/dashboard/accounts/add"
-              className="px-6 py-2.5 bg-slate-900 text-white rounded-full font-bold text-xs hover:bg-black transition-all shadow-md shadow-slate-200"
+              className="px-6 py-2.5 w-full md:w-auto text-center bg-slate-900 text-white rounded-full font-bold text-xs hover:bg-black transition-all shadow-md shadow-slate-200"
             >
               Add Customer
             </Link>
