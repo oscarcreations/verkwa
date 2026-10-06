@@ -32,7 +32,7 @@ export function showConfirm(title: string, message: string): Promise<boolean> {
   });
 }
 
-export function ToastContainer() {
+export function ToastContainer({ className }: { className?: string } = {}) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
 
@@ -60,7 +60,7 @@ export function ToastContainer() {
   };
 
   return (
-    <>
+    <div className={className}>
       <div className="fixed top-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none">
         {toasts.map((toast) => (
           <div
@@ -131,6 +131,6 @@ export function ToastContainer() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
