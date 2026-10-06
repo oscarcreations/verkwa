@@ -1,0 +1,20 @@
+./app/dashboard/ledgers/page.tsx:    type: "Commission",
+./app/dashboard/ledgers/page.tsx:        type: 'Commission', // Mapping all income to Commission to satisfy DB constraint
+./app/dashboard/ledgers/page.tsx:        type: "Commission", 
+./app/dashboard/ledgers/page.tsx:                              <option>Commission</option>
+./app/dashboard/transactions/page.tsx:  const tabs = ["Deposits", "Withdrawals", "Loans", "Loan payments", "Commissions"];
+./app/dashboard/transactions/page.tsx:                      currentTab === "COMMISSIONS" ? "Commission" : null;
+./app/dashboard/transactions/page.tsx:                <SummaryCard label="Net Commission" value={totals.amount} />
+./app/dashboard/transactions/page.tsx:                {activeTab === "Commissions" ? (
+./app/dashboard/transactions/page.tsx:                    <th className="px-8 py-4 text-[11px] font-bold text-slate-400 tracking-widest text-right">Commission</th>
+./app/dashboard/transactions/page.tsx:              <h2 className="text-[18px] font-bold text-slate-900 tracking-tight">Execute Commission</h2>
+./app/dashboard/transactions/page.tsx:                    alert("Initializing Global Commission Protocol...");
+./app/dashboard/page.tsx:    { title: "Commission by Branch", visible: canViewFinancials },
+./app/dashboard/client/activity/page.tsx:            {["All", "Deposit", "Withdrawal", "Loan", "Commission"].map(t => (
+./app/dashboard/reports/page.tsx:        let totalCommission = 0;
+./app/dashboard/reports/page.tsx:          totalCommission += c;
+./app/dashboard/reports/page.tsx:            Commission: c
+./app/dashboard/reports/page.tsx:          commissionTotal: totalCommission,
+./app/dashboard/reports/page.tsx:    { title: "Revenue", total: reportData.commissionTotal.toFixed(2), subtitle: "Manual commissions (30d)", hasData: reportData.commissionTotal > 0, color: "#818CF8", dataKey: "Commission" }
+./supabase/get_dashboard_stats.sql:            COALESCE(SUM(CASE WHEN type = 'Commission' THEN amount ELSE 0 END), 0) as total_revenue
+./supabase/get_dashboard_stats.sql:            COALESCE(SUM(CASE WHEN type = 'Commission' THEN amount ELSE 0 END), 0) as month_revenue
