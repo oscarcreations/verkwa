@@ -1,74 +1,110 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import { NextResponse } from 'next/server';
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+import { extractTenantSubdomain } from "@/lib/tenant";
 
-const isProtectedRoute = createRouteMatcher(['/dashboard(.*)']);
-const isSuperadminRoute = createRouteMatcher(['/dashboard/system(.*)']);
+export function getCookieDomainFromHost(host: string | null | undefined): string | undefined {
+  if (!host) return undefined;
+  const hostname = host.split(":")[0].toLowerCase();
 
-// Routes employees are NOT allowed to access
-const isEmployeeBlockedRoute = createRouteMatcher([
-  '/dashboard/settings(.*)',
-  '/dashboard/accounting(.*)',
-  '/dashboard/access(.*)',
-  '/dashboard/staff(.*)',
-  '/dashboard/authorizations(.*)',
-  '/dashboard/reports(.*)',
-  '/dashboard/business(.*)',
-  '/dashboard/ledgers(.*)',
-  '/dashboard/generate(.*)',
-  '/dashboard/system(.*)',
-]);
-
-// Routes only staff (not clients) can access
-const isStaffOnlyRoute = createRouteMatcher([
-  '/dashboard/settings(.*)',
-  '/dashboard/accounting(.*)',
-  '/dashboard/access(.*)',
-  '/dashboard/staff(.*)',
-  '/dashboard/accounts(.*)',
-  '/dashboard/transactions(.*)',
-  '/dashboard/reports(.*)',
-  '/dashboard/business(.*)',
-  '/dashboard/ledgers(.*)',
-  '/dashboard/authorizations(.*)',
-  '/dashboard/generate(.*)',
-]);
-
-export default clerkMiddleware(async (auth, req) => {
-  const { userId, sessionClaims } = await auth();
-
-  // 1. If user is logged in and tries to access the home page, redirect to dashboard
-  if (userId && req.nextUrl.pathname === '/') {
-    return NextResponse.redirect(new URL('/dashboard', req.url));
+  if (hostname.endsWith(".ghsusu.com") || hostname === "ghsusu.com") {
+    return ".ghsusu.com";
   }
 
-  // 2. Enforce route-based role protection
-  if (isProtectedRoute(req)) {
-    await auth.protect();
+  if (hostname.endsWith(".lvh.me") || hostname === "lvh.me") {
+    return ".lvh.me";
+  }
 
-    const roleRaw = (sessionClaims as any)?.metadata?.role || "";
-    const role = roleRaw.toLowerCase();
+  return undefined;
+}
 
-    // Superadmin-only routes
-    if (isSuperadminRoute(req) && role !== 'superadmin') {
-      return NextResponse.redirect(new URL('/dashboard', req.url));
+export async function middleware(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({
+    request,
+  });
+
+  const host = request.headers.get("host");
+  const cookieDomain = getCookieDomainFromHost(host);
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookieOptions: cookieDomain
+        ? {
+            domain: cookieDomain,
+            path: "/",
+            sameSite: "lax",
+          }
+        : undefined,
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          supabaseResponse = NextResponse.next({
+            request,
+          });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, {
+              ...options,
+              ...(cookieDomain ? { domain: cookieDomain } : {}),
+            })
+          );
+        },
+      },
     }
+  );
 
-    // Employee-blocked routes: employees can only access Dashboard, Accounts, Transactions
-    if (isEmployeeBlockedRoute(req) && role === 'employee') {
-      return NextResponse.redirect(new URL('/dashboard', req.url));
-    }
+  // Refresh auth session
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    // Client redirects: clients can only access their own portal
-    if (isStaffOnlyRoute(req) && role === 'client') {
-      return NextResponse.redirect(new URL('/dashboard', req.url));
+  const tenantSubdomain = extractTenantSubdomain(host);
+  const pathname = request.nextUrl.pathname;
+
+  // Exempt auth bridge from redirects
+  if (pathname.startsWith("/auth/bridge") || pathname.startsWith("/api/auth")) {
+    return supabaseResponse;
+  }
+
+  // 1. SUBDOMAIN ROOT HANDLING:
+  // If user visits http://verkwa-susu.localhost:3000/ (root of their subdomain)
+  if (tenantSubdomain && pathname === "/") {
+    const url = request.nextUrl.clone();
+    url.pathname = user ? "/dashboard" : "/login";
+    return NextResponse.rewrite(url);
+  }
+
+  // 2. Protect /dashboard routes
+  if (pathname.startsWith("/dashboard")) {
+    if (!user) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
     }
   }
-});
+
+  // 3. If already logged in, redirect away from /login and /signup
+  if ((pathname === "/login" || pathname === "/signup") && user) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
+  }
+
+  // Pass tenant subdomain down in headers so server components and layouts can read it
+  if (tenantSubdomain) {
+    supabaseResponse.headers.set("x-tenant-subdomain", tenantSubdomain);
+  }
+
+  return supabaseResponse;
+}
 
 export const config = {
   matcher: [
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    '/(api|trpc)(.*)',
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
-

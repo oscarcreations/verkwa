@@ -2,12 +2,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { useUser } from "@clerk/nextjs";
+import { useAuthSync } from "@/lib/hooks/useAuthSync";
 import { isPrimarySuperadmin } from "@/lib/constants";
 
 export default function AccessControlPage() {
-  const { user } = useUser();
-  const currentUserEmail = user?.primaryEmailAddress?.emailAddress;
+  const { user } = useAuthSync();
+  const currentUserEmail = user?.email;
   const isPrimaryAdmin = isPrimarySuperadmin(currentUserEmail);
   const tabs = ["Staff"];
   const [records, setRecords] = useState<any[]>([]);

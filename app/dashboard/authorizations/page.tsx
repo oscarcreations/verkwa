@@ -6,7 +6,7 @@ import { useAuthSync } from "@/lib/hooks/useAuthSync";
 import { format } from "date-fns";
 
 export default function AuthorizationsPage() {
-  const { resolvedRole, employeeId, isSyncing } = useAuthSync();
+  const { resolvedRole, employeeId, organizationId, isSyncing } = useAuthSync();
   const role = (resolvedRole || "").toLowerCase();
   const isAdmin = ["administrator", "admin", "superadmin"].includes(role);
   
@@ -30,6 +30,7 @@ export default function AuthorizationsPage() {
   }, []);
 
   const fetchPendingRequests = async () => {
+    if (!organizationId) return;
     try {
       console.log("Fetching pending authorizations...");
       setLoading(true);
@@ -37,6 +38,7 @@ export default function AuthorizationsPage() {
         .from('client_requests')
         .select('*')
         .eq('status', 'Pending')
+        .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
 
       if (requestsError) {
@@ -85,8 +87,8 @@ export default function AuthorizationsPage() {
 
 
   useEffect(() => {
-    if (!isSyncing) fetchPendingRequests();
-  }, [isSyncing, resolvedIds]);
+    if (!isSyncing && organizationId) fetchPendingRequests();
+  }, [isSyncing, organizationId, resolvedIds]);
 
   const handleAction = async (requestId: string, action: 'Approve' | 'Reject') => {
     if (!isAdmin) return alert("Unauthorized. Only administrators can process authorizations.");
@@ -132,6 +134,7 @@ export default function AuthorizationsPage() {
             type: request.type,
             staff_id: employeeId,
             branch_id: request.customers?.branch_id || null,
+            organization_id: organizationId,
             status: 'approved',
             deposit_by: request.reference ? `Paystack: ${request.reference}` : (request.details || `Authorized ${request.type}`),
             created_at: new Date().toISOString()

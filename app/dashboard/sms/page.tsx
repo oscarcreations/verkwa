@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useAuthSync } from "@/lib/hooks/useAuthSync";
 import { format } from "date-fns";
 import Link from "next/link";
 import { showToast, ToastContainer } from "@/components/Toast";
 
 export default function SMSPage() {
+  const { organizationId, isSyncing } = useAuthSync();
   const tabs = ["Usage", "Control", "Custom", "Top Up"];
   const [activeTab, setActiveTab] = useState("Usage");
 
@@ -15,7 +17,7 @@ export default function SMSPage() {
   const [usageLoading, setUsageLoading] = useState(true);
   const [usageLimit, setUsageLimit] = useState(10);
   const [totalUsed, setTotalUsed] = useState(0);
-  const [arkeselBalance, setArkeselBalance] = useState<number | null>(null);
+  const [smsBalance, setSmsBalance] = useState<number | null>(null);
 
   // Control Tab State
   const [customers, setCustomers] = useState<any[]>([]);
@@ -26,6 +28,8 @@ export default function SMSPage() {
   const [customLogs, setCustomLogs] = useState<any[]>([]);
 
   useEffect(() => {
+    if (isSyncing || !organizationId) return;
+
     if (activeTab === "Usage") {
       fetchUsage();
     } else if (activeTab === "Control") {
@@ -33,37 +37,46 @@ export default function SMSPage() {
     } else if (activeTab === "Custom") {
       fetchCustomLogs();
     }
-  }, [activeTab, usageLimit, controlLimit]);
+  }, [activeTab, usageLimit, controlLimit, organizationId, isSyncing]);
 
   async function fetchUsage() {
+    if (!organizationId) return;
     setUsageLoading(true);
     try {
-      // Fetch local logs
-      const { data, count } = await supabase
+      // 1. Fetch organization's own SMS logs
+      const { data } = await supabase
         .from("sms_logs")
-        .select("*", { count: "exact" })
+        .select("*")
+        .eq("organization_id", organizationId)
         .order("created_at", { ascending: false })
         .limit(usageLimit);
       setSmsLogs(data || []);
       
       const { count: totalCount } = await supabase
         .from("sms_logs")
-        .select("*", { count: "exact", head: true });
+        .select("*", { count: "exact", head: true })
+        .eq("organization_id", organizationId);
       setTotalUsed(totalCount || 0);
 
-      // Fetch live Arkesel balance
-      const balRes = await fetch("/api/sms/balance");
-      const balData = await balRes.json();
-      if (balRes.ok && balData) {
-        let balanceVal = null;
-        if (typeof balData.balance !== "undefined") {
-          balanceVal = balData.balance;
-        } else if (balData.data !== undefined) {
-          balanceVal = typeof balData.data === "number" 
-            ? balData.data 
-            : (balData.data.sms_balance ?? balData.data.balance ?? balData.data.main_balance);
+      // 2. Fetch company's actual allocated SMS balance from organizations table
+      const { data: orgData } = await supabase
+        .from("organizations")
+        .select("sms_balance")
+        .eq("id", organizationId)
+        .maybeSingle();
+
+      if (orgData?.sms_balance !== undefined) {
+        setSmsBalance(orgData.sms_balance);
+      } else {
+        // Fallback to live provider check if available
+        const balRes = await fetch("/api/sms/balance");
+        const balData = await balRes.json();
+        if (balRes.ok && balData) {
+          const val = typeof balData.balance !== "undefined" 
+            ? balData.balance 
+            : (balData.data?.sms_balance ?? balData.data?.balance ?? 0);
+          setSmsBalance(val);
         }
-        setArkeselBalance(balanceVal);
       }
     } catch (err) {
       console.error("Error fetching usage data:", err);
@@ -72,11 +85,13 @@ export default function SMSPage() {
   }
 
   async function fetchCustomers() {
+    if (!organizationId) return;
     setControlLoading(true);
     try {
       const { data } = await supabase
         .from("customers")
         .select("id, first_name, last_name, phone, mobile_number, allow_sms")
+        .eq("organization_id", organizationId)
         .order("first_name", { ascending: true })
         .limit(controlLimit);
       setCustomers(data || []);
@@ -87,10 +102,12 @@ export default function SMSPage() {
   }
 
   async function fetchCustomLogs() {
+    if (!organizationId) return;
     try {
       const { data } = await supabase
         .from("sms_logs")
         .select("*")
+        .eq("organization_id", organizationId)
         .eq("type", "Custom")
         .order("created_at", { ascending: false })
         .limit(10);
@@ -146,7 +163,7 @@ export default function SMSPage() {
               <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 min-w-[200px]">
                 <p className="text-[12px] font-bold text-slate-500 tracking-widest uppercase mb-1">Live SMS Balance</p>
                 <p className="text-3xl font-black text-green-600">
-                  {arkeselBalance !== null ? arkeselBalance : <span className="text-sm text-red-500">Restart Server / Key Missing</span>}
+                  {smsBalance !== null ? smsBalance : <span className="text-sm text-slate-400">Loading...</span>}
                 </p>
               </div>
               <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 min-w-[200px]">

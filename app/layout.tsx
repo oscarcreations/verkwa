@@ -1,4 +1,3 @@
-import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Instrument_Serif } from "next/font/google";
 import "./globals.css";
@@ -15,11 +14,11 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "Verkwa Susu | Manage Your Entire Susu Savings",
-  description: "Secure savings and loan management platform.",
+  title: "GHSUSU CRM | Ghana's Dedicated Susu & Loan CRM Platform",
+  description: "Stop losing Susu money & records. Digitize daily contributions, field mobilizers, loans, and automated SMS alerts for Susu vendors, savings groups & co-ops in Ghana.",
   icons: {
-    icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    icon: "/ghsusu-logo.jpg",
+    apple: "/ghsusu-logo.jpg",
   }
 };
 
@@ -29,15 +28,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
-      <html
-        lang="en"
-        className={`${plusJakartaSans.variable} ${instrumentSerif.variable} h-full antialiased`}
-      >
-        <body className="min-h-full flex flex-col">
-          {children}
-        </body>
-      </html>
-    </ClerkProvider>
+    <html
+      lang="en"
+      className={`${plusJakartaSans.variable} ${instrumentSerif.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">
+        {children}
+      </body>
+    </html>
   );
 }

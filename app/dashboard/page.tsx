@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { useAuthSync } from "@/lib/hooks/useAuthSync";
 import { supabase } from "@/lib/supabase";
 import { startOfMonth } from "date-fns";
 
 export default function DashboardPage() {
-  const { user, isLoaded } = useUser();
-  const { resolvedRole, isSyncing, employeeId } = useAuthSync();
+  const { user, resolvedRole, isSyncing, employeeId, organizationName, organizationId } = useAuthSync();
+  const isLoaded = !isSyncing;
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     customers: 0,
@@ -57,23 +56,29 @@ export default function DashboardPage() {
       }
 
       try {
-        // 1. Fetch Stats via Optimized RPC
+        // 1. Fetch Stats via Optimized Multi-Tenant RPC
         const { data: rpcData, error: rpcError } = await supabase.rpc('get_dashboard_stats', {
-          p_employee_id: isRestricted ? employeeId : null
+          p_employee_id: isRestricted ? employeeId : null,
+          p_organization_id: organizationId || null,
         });
 
         if (rpcError) throw rpcError;
 
-        // 2. Fetch Pending Requests (Separate as it's a specific UI component)
+        // 2. Fetch Pending Requests (Scoped by organization)
         let pendingRequests = [];
         if (isAdmin) {
-          const { data: reqs } = await supabase
+          let reqQuery = supabase
             .from('client_requests')
             .select('*, customers(first_name, last_name, account_num)')
             .eq('status', 'Pending')
             .order('created_at', { ascending: false })
             .limit(5);
+
+          if (organizationId) {
+            reqQuery = reqQuery.eq('organization_id', organizationId);
+          }
           
+          const { data: reqs } = await reqQuery;
           pendingRequests = (reqs || []).filter((r: any) => !clearedIds.has(r.id));
         }
 
@@ -89,11 +94,17 @@ export default function DashboardPage() {
 
         // For employees: override customers/accounts with actual served counts
         if (isRestricted && employeeId) {
-          const { data: txs } = await supabase
+          let txQuery = supabase
             .from("transactions")
             .select("customer_id, customers(first_name, last_name, account_num)")
             .eq("staff_id", employeeId)
             .not("type", "in", "(Commission,Interest,Service Fee,Other Income)");
+
+          if (organizationId) {
+            txQuery = txQuery.eq("organization_id", organizationId);
+          }
+
+          const { data: txs } = await txQuery;
 
           const uniqueCustomers = new Map();
           (txs || []).forEach((tx: any) => {
@@ -109,12 +120,18 @@ export default function DashboardPage() {
           }));
 
           // Fetch recent transactions
-          const { data: recentTxs } = await supabase
+          let rQuery = supabase
             .from("transactions")
             .select("*, customers(first_name, last_name, account_num)")
             .eq("staff_id", employeeId)
             .order("created_at", { ascending: false })
             .limit(10);
+
+          if (organizationId) {
+            rQuery = rQuery.eq("organization_id", organizationId);
+          }
+
+          const { data: recentTxs } = await rQuery;
           setRecentTransactions(recentTxs || []);
         }
       } catch (err) {
@@ -127,7 +144,7 @@ export default function DashboardPage() {
     }
 
     if (isLoaded) fetchDashboardStats();
-  }, [isLoaded, isStaff, isAdmin, isRestricted, employeeId, clearedIds]);
+  }, [isLoaded, isStaff, isAdmin, isRestricted, employeeId, organizationId, clearedIds]);
 
 
   if (!isLoaded || loading || isSyncing) {
@@ -568,7 +585,7 @@ function ClientDashboardView({ user }: { user: any }) {
         </div>
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Account Linking Pending</h1>
         <p className="text-slate-600 font-medium leading-relaxed max-w-md mx-auto">
-          Welcome, <span className="font-bold text-slate-800">{user?.firstName}</span>! We couldn't find a customer record linked to your email.
+          Welcome, <span className="font-bold text-slate-800">{user?.user_metadata?.full_name || user?.email}</span>! We couldn&apos;t find a customer record linked to your email.
           Please contact your branch manager to activate your portal.
         </p>
         <div className="pt-6">

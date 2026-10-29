@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useAuthSync } from "@/lib/hooks/useAuthSync";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 
 export default function ClientActivityPage() {
-  const { user, isLoaded } = useUser();
+  const { user, isSyncing } = useAuthSync();
+  const isLoaded = !isSyncing;
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({
     transactions: [] as any[],
@@ -16,7 +17,7 @@ export default function ClientActivityPage() {
 
   useEffect(() => {
     async function fetchActivity() {
-      const email = user?.primaryEmailAddress?.emailAddress;
+      const email = user?.email;
       if (!email) return setLoading(false);
 
       try {

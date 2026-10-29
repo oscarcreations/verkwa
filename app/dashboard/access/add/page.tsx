@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { useUser } from "@clerk/nextjs";
+import { useAuthSync } from "@/lib/hooks/useAuthSync";
 import { isPrimarySuperadmin } from "@/lib/constants";
 import Link from "next/link";
 
 export default function AddEmployeePage() {
-  const { user } = useUser();
-  const currentUserEmail = user?.primaryEmailAddress?.emailAddress;
+  const { user } = useAuthSync();
+  const currentUserEmail = user?.email;
   const isPrimaryAdmin = isPrimarySuperadmin(currentUserEmail);
   
   const router = useRouter();

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { useAuthSync } from "@/lib/hooks/useAuthSync";
 import { showToast, ToastContainer } from "@/components/Toast";
 
 interface FeeSetting {
@@ -16,6 +17,7 @@ interface FeeSetting {
 }
 
 export default function FeeSettingsPage() {
+  const { organizationId, isSyncing } = useAuthSync();
   const [fees, setFees] = useState<FeeSetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -24,16 +26,32 @@ export default function FeeSettingsPage() {
 
   async function fetchFees() {
     setLoading(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from("fee_settings")
       .select("*")
       .order("applies_to");
-    if (error) showToast("Error: " + error.message, "error");
-    else setFees(data || []);
+
+    if (organizationId) {
+      query = query.or(`organization_id.eq.${organizationId},organization_id.is.null`);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      if (error.message?.includes("organization_id")) {
+        const { data: fallback } = await supabase.from("fee_settings").select("*").order("applies_to");
+        setFees(fallback || []);
+      } else {
+        showToast("Error: " + error.message, "error");
+      }
+    } else {
+      setFees(data || []);
+    }
     setLoading(false);
   }
 
-  useEffect(() => { fetchFees(); }, []);
+  useEffect(() => {
+    if (!isSyncing) fetchFees();
+  }, [isSyncing, organizationId]);
 
   const startEdit = (fee: FeeSetting) => {
     setEditingId(fee.id);
@@ -47,10 +65,16 @@ export default function FeeSettingsPage() {
 
   const handleSave = async (id: string) => {
     setSaving(true);
-    const { error } = await supabase
+    let query = supabase
       .from("fee_settings")
       .update({ percentage: editForm.percentage, is_active: editForm.is_active, updated_at: new Date().toISOString() })
       .eq("id", id);
+
+    if (organizationId) {
+      query = query.eq("organization_id", organizationId);
+    }
+
+    const { error } = await query;
     if (error) showToast("Error: " + error.message, "error");
     else {
       setFees((prev) =>
@@ -65,10 +89,16 @@ export default function FeeSettingsPage() {
   };
 
   const handleToggle = async (fee: FeeSetting) => {
-    const { error } = await supabase
+    let query = supabase
       .from("fee_settings")
       .update({ is_active: !fee.is_active, updated_at: new Date().toISOString() })
       .eq("id", fee.id);
+
+    if (organizationId) {
+      query = query.eq("organization_id", organizationId);
+    }
+
+    const { error } = await query;
     if (error) showToast("Error: " + error.message, "error");
     else {
       setFees((prev) => prev.map((f) => (f.id === fee.id ? { ...f, is_active: !f.is_active } : f)));

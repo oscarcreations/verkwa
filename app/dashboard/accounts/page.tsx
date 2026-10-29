@@ -86,7 +86,7 @@ const dateOptions: { label: string; value: DateFilter }[] = [
 ];
 
 export default function AccountsPage() {
-  const { resolvedRole, employeeId, isSyncing } = useAuthSync();
+  const { resolvedRole, employeeId, organizationId, isSyncing } = useAuthSync();
   const role = (resolvedRole || "").toLowerCase();
   const isAdmin = ["administrator", "admin", "superadmin"].includes(role);
   const isRestricted = !isAdmin && role !== "client" && role !== "";
@@ -187,6 +187,10 @@ export default function AccountsPage() {
           .from("customers")
           .select(`*, staff (first_name, last_name)`, { count: "exact" });
 
+        if (organizationId) {
+          query = query.eq("organization_id", organizationId);
+        }
+
         const sortMap: Record<string, { column: string; ascending: boolean }> = {
           newest: { column: "created_at", ascending: false },
           oldest: { column: "created_at", ascending: true },
@@ -232,7 +236,7 @@ export default function AccountsPage() {
     }
 
     fetchCustomers();
-  }, [page, resolvedRole, employeeId, dateFilter, customFrom, customTo, search, sortBy]);
+  }, [page, resolvedRole, employeeId, organizationId, dateFilter, customFrom, customTo, search, sortBy]);
 
   const totalPages = Math.ceil(totalCount / limit);
 

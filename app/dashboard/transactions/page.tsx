@@ -79,7 +79,7 @@ export default function TransactionsPage() {
 }
 
 function TransactionsContent() {
-  const { resolvedRole, employeeId, isSyncing } = useAuthSync();
+  const { resolvedRole, employeeId, organizationId, isSyncing } = useAuthSync();
   const role = (resolvedRole || "").toLowerCase();
   const isAdmin = ["administrator", "admin", "superadmin"].includes(role);
   const isRestricted = !isAdmin && role !== "client" && role !== "";
@@ -130,15 +130,26 @@ function TransactionsContent() {
   useEffect(() => {
     async function fetchMetadata() {
       if (isSyncing) return;
-      const { data: custData } = await supabase.from("customers").select("id, first_name, last_name, account_num").order("last_name");
-      const { data: branchData } = await supabase.from("branches").select("id, name").order("name");
-      const { data: empData } = await supabase.from("staff").select("id, first_name, last_name").eq("status", true).order("last_name");
+      let custQ = supabase.from("customers").select("id, first_name, last_name, account_num").order("last_name");
+      let branchQ = supabase.from("branches").select("id, name").order("name");
+      let empQ = supabase.from("staff").select("id, first_name, last_name").eq("status", true).order("last_name");
+
+      if (organizationId) {
+        custQ = custQ.eq("organization_id", organizationId);
+        branchQ = branchQ.eq("organization_id", organizationId);
+        empQ = empQ.eq("organization_id", organizationId);
+      }
+
+      const [{ data: custData }, { data: branchData }, { data: empData }] = await Promise.all([
+        custQ, branchQ, empQ
+      ]);
+
       setCustomers(custData || []);
       setBranches(branchData || []);
       setEmployees(empData || []);
     }
     fetchMetadata();
-  }, [isSyncing]);
+  }, [isSyncing, organizationId]);
 
   useEffect(() => { setPage(0); setSelectedIds(new Set()); }, [dateFilter, customFrom, customTo, searchQuery, activeTab]);
 
@@ -163,6 +174,10 @@ function TransactionsContent() {
 
         let query = supabase.from("transactions").select(selectFields, { count: "exact" })
           .order("created_at", { ascending: false });
+
+        if (organizationId) {
+          query = query.eq("organization_id", organizationId);
+        }
 
         if (dbType) {
           if (dbType === "REVENUE") query = query.in("type", ["Commission", "Service Fee", "Interest", "Other Income"]);
@@ -209,7 +224,7 @@ function TransactionsContent() {
       }
     }
     fetchTransactions();
-  }, [isSyncing, activeTab, page, resolvedRole, employeeId, selectedCustomerId, selectedBranchId, selectedStatus, dateFilter, customFrom, customTo, searchQuery]);
+  }, [isSyncing, activeTab, page, resolvedRole, employeeId, organizationId, selectedCustomerId, selectedBranchId, selectedStatus, dateFilter, customFrom, customTo, searchQuery]);
 
   const totalPages = Math.ceil(totalCount / limit);
 

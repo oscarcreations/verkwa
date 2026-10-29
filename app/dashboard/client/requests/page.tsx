@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useAuthSync } from "@/lib/hooks/useAuthSync";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -9,7 +9,8 @@ import Link from "next/link";
 import { usePaystackPayment } from "react-paystack";
 
 export default function ClientRequestsPage() {
-  const { user, isLoaded } = useUser();
+  const { user, isSyncing } = useAuthSync();
+  const isLoaded = !isSyncing;
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -27,7 +28,7 @@ export default function ClientRequestsPage() {
   // Paystack Config
   const paystackConfig = {
     reference: (new Date()).getTime().toString(),
-    email: user?.primaryEmailAddress?.emailAddress || "",
+    email: user?.email || "",
     amount: Math.round((parseFloat(formData.amount) || 0) * 100),
     publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "",
     currency: "GHS",

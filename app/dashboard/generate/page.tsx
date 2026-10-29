@@ -9,7 +9,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export default function GeneratePage() {
-  const { resolvedRole, isSyncing } = useAuthSync();
+  const { resolvedRole, organizationId, organizationName, isSyncing } = useAuthSync();
   const role = (resolvedRole || "").toLowerCase();
   const isAdmin = ["administrator", "admin", "superadmin"].includes(role);
 
@@ -29,13 +29,21 @@ export default function GeneratePage() {
   ];
 
   const handleGenerate = async () => {
+    if (!organizationId) {
+      showToast("Enterprise context not found", "error");
+      return;
+    }
     setGenerating(true);
     try {
       let rawData: any[] = [];
-      let filename = `verkwa_${reportType}_${new Date().toISOString().split('T')[0]}`;
+      const orgPrefix = (organizationName || "ghsusu").toLowerCase().replace(/[^a-z0-9]/g, "_");
+      let filename = `${orgPrefix}_${reportType}_${new Date().toISOString().split('T')[0]}`;
 
       if (reportType === 'customers') {
-        const { data: res } = await supabase.from('customers').select('account_num, first_name, last_name, gender, mobile_number, phone, email, status, account_type, region, town, branch_id, branches(name), created_at');
+        const { data: res } = await supabase
+          .from('customers')
+          .select('account_num, first_name, last_name, gender, mobile_number, phone, email, status, account_type, region, town, branch_id, branches(name), created_at')
+          .eq('organization_id', organizationId);
         rawData = (res || []).map((r: any) => ({
           account_num: r.account_num,
           first_name: r.first_name,
@@ -51,7 +59,10 @@ export default function GeneratePage() {
           registered: r.created_at ? new Date(r.created_at).toLocaleDateString() : '',
         }));
       } else if (reportType === 'transactions') {
-        const { data: res } = await supabase.from('transactions').select('id, type, amount, status, created_at, customers(first_name, last_name, account_num), staff(first_name, last_name)');
+        const { data: res } = await supabase
+          .from('transactions')
+          .select('id, type, amount, status, created_at, customers(first_name, last_name, account_num), staff(first_name, last_name)')
+          .eq('organization_id', organizationId);
         rawData = (res || []).map((r: any) => ({
           id: r.id?.slice(0, 8),
           customer: `${r.customers?.first_name || ''} ${r.customers?.last_name || ''}`.trim(),
@@ -63,8 +74,10 @@ export default function GeneratePage() {
           date: r.created_at ? new Date(r.created_at).toLocaleDateString() : '',
         }));
       } else if (reportType === 'revenue') {
-        const { data: res } = await supabase.from('transactions')
+        const { data: res } = await supabase
+          .from('transactions')
           .select('id, type, amount, status, created_at, customers(first_name, last_name, account_num)')
+          .eq('organization_id', organizationId)
           .in('type', ['Commission', 'Service Fee', 'Interest', 'Other Income']);
         rawData = (res || []).map((r: any) => ({
           type: r.type,
@@ -75,8 +88,10 @@ export default function GeneratePage() {
           date: r.created_at ? new Date(r.created_at).toLocaleDateString() : '',
         }));
       } else if (reportType === 'performance') {
-        const { data: res } = await supabase.from('transactions')
+        const { data: res } = await supabase
+          .from('transactions')
           .select('id, type, amount, staff_id, staff(first_name, last_name)')
+          .eq('organization_id', organizationId)
           .in('type', ['Deposit', 'Withdrawal', 'Loan', 'Loan Payment']);
         const staffMap = new Map<string, { name: string; deposits: number; withdrawals: number; loans: number; loanPayments: number }>();
         (res || []).forEach((tx: any) => {
@@ -131,7 +146,8 @@ export default function GeneratePage() {
       } else if (format === "pdf") {
         const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
         doc.setFontSize(16);
-        doc.text(`Verkwa - ${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report`, 14, 15);
+        const reportTitle = `${organizationName || "GHSUSU CRM"} - ${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report`;
+        doc.text(reportTitle, 14, 15);
         doc.setFontSize(10);
         doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 22);
 

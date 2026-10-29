@@ -6,7 +6,7 @@ import { useAuthSync } from "@/lib/hooks/useAuthSync";
 import Link from "next/link";
 
 export default function AccountingPage() {
-  const { resolvedRole, employeeId, isSyncing } = useAuthSync();
+  const { resolvedRole, employeeId, organizationId, isSyncing } = useAuthSync();
   const role = (resolvedRole || "").toLowerCase();
   const isAdmin = ["administrator", "admin", "superadmin"].includes(role);
   const isRestricted = !isAdmin && role !== "client" && role !== "";
@@ -34,10 +34,12 @@ export default function AccountingPage() {
 
   useEffect(() => {
     async function fetchAccountingData() {
+      if (!organizationId) return;
       try {
         setLoading(true);
         const { data: rpcData, error } = await supabase.rpc('get_dashboard_stats', {
-          p_employee_id: isRestricted ? employeeId : null
+          p_employee_id: isRestricted ? employeeId : null,
+          p_organization_id: organizationId
         });
 
         if (error) throw error;
@@ -45,10 +47,11 @@ export default function AccountingPage() {
         const income = rpcData?.financials?.revenue?.total || 0;
         const expenses = rpcData?.financials?.withdrawals?.total || 0;
 
-        // Fetch total reserved capital from transactions (system-wide)
+        // Fetch total reserved capital from transactions (scoped to organization)
         const { data: resData } = await supabase
           .from('transactions')
           .select('amount, type')
+          .eq('organization_id', organizationId)
           .in('type', ['Reserve', 'Release'])
           .in('status', ['ok', 'approved', 'completed', 'sent']);
         
@@ -61,7 +64,7 @@ export default function AccountingPage() {
         setFinancials({
           income,
           expenses,
-          cashOnHand: income - expenses - totalReserved, // Subtracted reserved capital from operational income
+          cashOnHand: income - expenses - totalReserved,
           reservedCapital: totalReserved
         });
 
@@ -69,7 +72,8 @@ export default function AccountingPage() {
         const { data: entries } = await supabase
           .from('transactions')
           .select('*, branches(name)')
-          .or('deposit_by.ilike.INCOME%,deposit_by.ilike.RESERVE%') // Show both income and reserve transfers
+          .eq('organization_id', organizationId)
+          .or('deposit_by.ilike.INCOME%,deposit_by.ilike.RESERVE%')
           .order('created_at', { ascending: false })
           .limit(5);
         
@@ -82,19 +86,22 @@ export default function AccountingPage() {
       }
     }
 
-    if (!isSyncing && (!isRestricted || employeeId)) fetchAccountingData();
-  }, [isSyncing, isRestricted, employeeId]);
+    if (!isSyncing && organizationId && (!isRestricted || employeeId)) fetchAccountingData();
+  }, [isSyncing, organizationId, isRestricted, employeeId]);
 
   useEffect(() => {
     async function fetchMetadata() {
-      const { data: bData } = await supabase.from('branches').select('*');
-      const { data: cData } = await supabase.from('customers').select('id, first_name, last_name, account_num').order('last_name');
+      if (!organizationId) return;
+      const { data: bData } = await supabase.from('branches').select('*').eq('organization_id', organizationId);
+      const { data: cData } = await supabase.from('customers').select('id, first_name, last_name, account_num').eq('organization_id', organizationId).order('last_name');
       setBranches(bData || []);
       setCustomers(cData || []);
       if (bData?.[0]) setReserveFormData(prev => ({ ...prev, branch_id: bData[0].id }));
     }
-    fetchMetadata();
-  }, []);
+    if (!isSyncing && organizationId) {
+      fetchMetadata();
+    }
+  }, [isSyncing, organizationId]);
 
   const handleReserveSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,6 +114,7 @@ export default function AccountingPage() {
         type: reserveFormData.type,
         branch_id: reserveFormData.branch_id,
         staff_id: employeeId,
+        organization_id: organizationId,
         deposit_by: `RESERVE | ${reserveFormData.type}: ${reserveFormData.details}`,
         status: 'completed'
       }]);

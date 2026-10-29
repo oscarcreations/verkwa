@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
-import { useUser } from "@clerk/nextjs";
 import { useAuthSync } from "@/lib/hooks/useAuthSync";
 import { showToast, ToastContainer } from "@/components/Toast";
 
@@ -18,7 +17,7 @@ export default function AddCustomerPage() {
   const [branches, setBranches] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const { resolvedRole, employeeId, isSyncing } = useAuthSync();
+  const { user, resolvedRole, employeeId, organizationId, isSyncing } = useAuthSync();
   const isAdmin = ["Administrator", "admin", "superadmin"].includes(resolvedRole || "");
 
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -51,17 +50,19 @@ export default function AddCustomerPage() {
 
   useEffect(() => {
     async function fetchBranches() {
-      const { data } = await supabase.from("branches").select("id, name");
+      let q = supabase.from("branches").select("id, name");
+      if (organizationId) q = q.eq("organization_id", organizationId);
+      const { data } = await q;
       if (data) setBranches(data);
     }
     async function fetchEmployees() {
-      if (isAdmin) {
-        const { data } = await supabase
-          .from("staff")
-          .select("id, first_name, last_name")
-          .eq("status", true);
-        if (data) setEmployees(data);
-      }
+      let q = supabase
+        .from("staff")
+        .select("id, first_name, last_name")
+        .eq("status", true);
+      if (organizationId) q = q.eq("organization_id", organizationId);
+      const { data } = await q;
+      if (data) setEmployees(data);
     }
     fetchBranches();
     fetchEmployees();
@@ -103,7 +104,7 @@ export default function AddCustomerPage() {
     }
   }, [editId, isAdmin]);
 
-  const { user, isLoaded: userLoaded } = useUser();
+  const userLoaded = !isSyncing;
 
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -148,19 +149,14 @@ export default function AddCustomerPage() {
         return;
       }
 
-      let targetStaffId = formData.added_by;
+      let targetStaffId = formData.added_by || employeeId || null;
 
-      if (!isAdmin) {
-        const userEmail = user.primaryEmailAddress?.emailAddress;
-        const { data: staff } = await supabase
-          .from("staff")
-          .select("id")
-          .or(`clerk_id.eq.${user.id},email.eq.${userEmail}`)
-          .single();
-        targetStaffId = staff?.id || null;
+      if (!isAdmin && employeeId) {
+        targetStaffId = employeeId;
       }
 
       const customerPayload = {
+        organization_id: organizationId || null,
         first_name: formData.first_name,
         last_name: formData.last_name,
         email: formData.email,
@@ -169,7 +165,7 @@ export default function AddCustomerPage() {
         branch_id: formData.branch_id || null,
         account_type: formData.account_type,
         status: "Active",
-        added_by: targetStaffId || null,
+        added_by: targetStaffId,
         registration_date: formData.registration_date || null,
         date_of_birth: formData.date_of_birth || null,
         id_type: formData.id_type || null,

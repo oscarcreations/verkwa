@@ -16,7 +16,7 @@ import {
 import { format, subDays, eachDayOfInterval, startOfDay, isSameDay } from "date-fns";
 
 export default function ReportsPage() {
-  const { resolvedRole, employeeId, isSyncing } = useAuthSync();
+  const { resolvedRole, employeeId, organizationId, isSyncing } = useAuthSync();
   const role = (resolvedRole || "").toLowerCase();
   const isAdmin = ["administrator", "admin", "superadmin"].includes(role);
   const isRestricted = !isAdmin && role !== "client" && role !== "";
@@ -33,6 +33,7 @@ export default function ReportsPage() {
 
   useEffect(() => {
     async function fetchReportData() {
+      if (!organizationId) return;
 
       try {
         setLoading(true);
@@ -40,7 +41,8 @@ export default function ReportsPage() {
         // 1. Fetch Daily Aggregates via RPC (High Performance)
         const { data: dailyData, error: rpcError } = await supabase.rpc('get_daily_aggregates', {
           p_days: 30,
-          p_employee_id: isRestricted ? employeeId : null
+          p_employee_id: isRestricted ? employeeId : null,
+          p_organization_id: organizationId
         });
 
         if (rpcError) throw rpcError;
@@ -96,10 +98,10 @@ export default function ReportsPage() {
       }
     }
 
-    if (!isSyncing && (!isRestricted || employeeId)) {
+    if (!isSyncing && organizationId && (!isRestricted || employeeId)) {
       fetchReportData();
     }
-  }, [isSyncing, isRestricted, employeeId]);
+  }, [isSyncing, organizationId, isRestricted, employeeId]);
 
 
   const charts = [

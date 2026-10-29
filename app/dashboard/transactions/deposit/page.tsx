@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { showToast, ToastContainer } from "@/components/Toast";
@@ -23,10 +22,11 @@ function generateTxRef(): string {
 
 export default function DepositFormPage() {
   const router = useRouter();
-  const { user, isLoaded } = useUser();
-  const { resolvedRole, employeeId } = useAuthSync();
+  const { user, resolvedRole, employeeId, organizationId, isSyncing } = useAuthSync();
+  const isLoaded = !isSyncing;
   const role = (resolvedRole || "").toLowerCase();
-  const isEmployee = role === "employee";
+  const isAdmin = ["administrator", "admin", "superadmin"].includes(role);
+  const isEmployee = !isAdmin;
   const [lookupQuery, setLookupQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
@@ -41,40 +41,49 @@ export default function DepositFormPage() {
 
   useEffect(() => {
     async function fetchEmployees() {
-      const { data } = await supabase.from("staff").select("id, first_name, last_name, branch_id").eq("status", true).order("last_name");
+      let q = supabase.from("staff").select("id, first_name, last_name, branch_id").eq("status", true).order("last_name");
+      if (organizationId) {
+        q = q.eq("organization_id", organizationId);
+      }
+      const { data } = await q;
       setEmployees(data || []);
 
-      if (isEmployee && employeeId) {
+      if (employeeId) {
         const me = data?.find((e: any) => e.id === employeeId);
         if (me) {
           setFormData(prev => ({
             ...prev,
-            depositBy: `${me.first_name} ${me.last_name}`,
-            staffId: me.id,
-            branchId: me.branch_id || "",
+            depositBy: prev.depositBy || `${me.first_name} ${me.last_name}`,
+            staffId: prev.staffId || me.id,
+            branchId: prev.branchId || me.branch_id || "",
           }));
         }
       }
     }
     fetchEmployees();
-  }, [isEmployee, employeeId]);
+  }, [employeeId, organizationId]);
 
   useEffect(() => {
     if (lookupQuery.length > 1) {
       const searchItems = async () => {
-        const { data } = await supabase
+        let q = supabase
           .from('customers')
           .select('*')
           .or(`last_name.ilike.%${lookupQuery}%,first_name.ilike.%${lookupQuery}%,account_num.ilike.%${lookupQuery}%`)
           .limit(5);
+
+        if (organizationId) {
+          q = q.eq('organization_id', organizationId);
+        }
         
+        const { data } = await q;
         setSearchResults(data || []);
       };
       searchItems();
     } else {
       setSearchResults([]);
     }
-  }, [lookupQuery]);
+  }, [lookupQuery, organizationId]);
 
   const handleSelectCustomer = (customer: any) => {
     setSelectedCustomer(customer);
@@ -97,17 +106,17 @@ export default function DepositFormPage() {
     setLoading(true);
 
     try {
-      // Use selected employee from dropdown, fallback to Clerk user lookup
-      let staffId = formData.staffId || null;
+      // Use selected employee or current employee session
+      let staffId = formData.staffId || employeeId || null;
       let branchId = formData.branchId || selectedCustomer.branch_id || null;
 
       if (!staffId) {
-        const userEmail = user.primaryEmailAddress?.emailAddress;
+        const userEmail = user.primaryEmailAddress?.emailAddress || user.email;
         const { data: staff } = await supabase
           .from('staff')
           .select('id, branch_id')
-          .or(`clerk_id.eq.${user.id},email.eq.${userEmail}`)
-          .single();
+          .or(`user_id.eq.${user.id},email.eq.${userEmail}`)
+          .maybeSingle();
         staffId = staff?.id || null;
         branchId = staff?.branch_id || branchId;
       }
@@ -115,6 +124,7 @@ export default function DepositFormPage() {
       const { error } = await supabase
         .from('transactions')
         .insert([{
+          organization_id: organizationId || null,
           type: 'Deposit',
           amount: Number(formData.amount),
           customer_id: selectedCustomer.id,
@@ -141,6 +151,7 @@ export default function DepositFormPage() {
         const validTypes = ["Commission", "Interest", "Service Fee", "Other Income"];
         const feeType = validTypes.includes(feeSetting.name) ? feeSetting.name : "Commission";
         await supabase.from("transactions").insert([{
+          organization_id: organizationId || null,
           type: feeType,
           amount: commissionAmount,
           customer_id: selectedCustomer.id,
