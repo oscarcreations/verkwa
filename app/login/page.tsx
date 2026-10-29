@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { getTenantSubdomainUrl } from "@/lib/tenant";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,40 +34,8 @@ export default function LoginPage() {
       }
 
       if (data.user && data.session) {
-        // Fetch organization slug for custom subdomain redirection
-        const { data: staffData } = await supabase
-          .from("staff")
-          .select("organization_id, organizations(slug)")
-          .or(`user_id.eq.${data.user.id},email.eq.${data.user.email}`)
-          .maybeSingle();
-
-        const orgSlug = (staffData as any)?.organizations?.slug;
-        const currentHost = typeof window !== "undefined" ? window.location.host : "";
-
-        if (orgSlug) {
-          // If we're already on this tenant subdomain, simply push /dashboard
-          const isAlreadyOnSubdomain =
-            currentHost.startsWith(`${orgSlug}.localhost`) ||
-            currentHost.startsWith(`${orgSlug}.ghsusu.com`);
-
-          if (isAlreadyOnSubdomain) {
-            router.push("/dashboard");
-            router.refresh();
-          } else {
-            // Transfer session to enterprise subdomain (e.g. http://verkwa-susu.localhost:3000)
-            const bridgePath = `/auth/bridge?access_token=${encodeURIComponent(
-              data.session.access_token
-            )}&refresh_token=${encodeURIComponent(
-              data.session.refresh_token
-            )}&next=/dashboard`;
-
-            const destUrl = getTenantSubdomainUrl(orgSlug, bridgePath, currentHost);
-            window.location.href = destUrl;
-          }
-        } else {
-          router.push("/dashboard");
-          router.refresh();
-        }
+        router.push("/dashboard");
+        router.refresh();
       }
     } catch (err: any) {
       setErrorMsg(err.message || "An unexpected error occurred.");

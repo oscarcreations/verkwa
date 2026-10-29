@@ -6,6 +6,10 @@ export function getCookieDomainFromHost(host: string | null | undefined): string
   if (!host) return undefined;
   const hostname = host.split(":")[0].toLowerCase();
 
+  if (hostname.endsWith(".susugh.org") || hostname === "susugh.org") {
+    return ".susugh.org";
+  }
+
   if (hostname.endsWith(".ghsusu.com") || hostname === "ghsusu.com") {
     return ".ghsusu.com";
   }

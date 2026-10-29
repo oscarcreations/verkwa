@@ -41,6 +41,9 @@ export function extractTenantSubdomain(host: string | null | undefined): string 
   if (
     hostname === "localhost" ||
     hostname === "127.0.0.1" ||
+    hostname === "susugh.org" ||
+    hostname === "www.susugh.org" ||
+    hostname === "app.susugh.org" ||
     hostname === "ghsusu.com" ||
     hostname === "www.ghsusu.com" ||
     hostname === "app.ghsusu.com"
@@ -62,6 +65,13 @@ export function extractTenantSubdomain(host: string | null | undefined): string 
     return sub && sub !== "www" && sub !== "app" ? sub : null;
   }
 
+  // Handle production: *.susugh.org
+  if (hostname.endsWith(".susugh.org")) {
+    const parts = hostname.replace(".susugh.org", "").split(".");
+    const sub = parts[parts.length - 1];
+    return sub && sub !== "www" && sub !== "app" ? sub : null;
+  }
+
   // Handle production: *.ghsusu.com
   if (hostname.endsWith(".ghsusu.com")) {
     const parts = hostname.replace(".ghsusu.com", "").split(".");
@@ -75,7 +85,7 @@ export function extractTenantSubdomain(host: string | null | undefined): string 
 /**
  * Constructs the redirect URL to the enterprise subdomain.
  * In development: http://[subdomain].localhost:3000[path]
- * In production:  https://[subdomain].ghsusu.com[path]
+ * In production:  https://[subdomain].[active-domain][path]
  */
 export function getTenantSubdomainUrl(
   subdomain: string,
@@ -95,5 +105,9 @@ export function getTenantSubdomainUrl(
     return `http://${cleanSub}.localhost:3000${path}`;
   }
 
-  return `https://${cleanSub}.ghsusu.com${path}`;
+  const hostWithoutPort = (reqHost || "").split(":")[0];
+  const parts = hostWithoutPort.split(".");
+  const rootDomain = parts.length >= 2 ? parts.slice(-2).join(".") : "susugh.org";
+
+  return `https://${cleanSub}.${rootDomain}${path}`;
 }

@@ -11,7 +11,7 @@ import {
   checkPasswordBreach,
   type PasswordCriteria,
 } from "@/lib/security/passwordChecker";
-import { slugifyTenant, getTenantSubdomainUrl } from "@/lib/tenant";
+import { slugifyTenant } from "@/lib/tenant";
 
 const STEPS = [
   { label: "Owner", icon: "👤" },
@@ -263,16 +263,8 @@ export default function SignupPage() {
         phone: phone.trim(),
       });
 
-      // In production (*.ghsusu.com), redirect to enterprise custom subdomain.
-      // In local dev, stay on current origin to prevent browser cookie isolation between localhost and *.localhost.
-      const isProduction = typeof window !== "undefined" && window.location.hostname.endsWith("ghsusu.com");
-      if (isProduction && slug) {
-        const destUrl = getTenantSubdomainUrl(slug, "/dashboard", window.location.host);
-        window.location.href = destUrl;
-      } else {
-        router.push("/dashboard");
-        router.refresh();
-      }
+      router.push("/dashboard");
+      router.refresh();
     } catch (err: any) {
       setErrorMsg(err.message || "Something went wrong.");
       setLoading(false);
